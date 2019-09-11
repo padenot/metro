@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>metro.js.md</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>metro.js.md</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <h2 id="utility-functions">Utility functions</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>First we need a function to clamp between two values, JavaScript doesn’t seem to
+have one, so lets’ make one:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">clamp</span>(<span class="hljs-params">v, min, max</span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-built_in">Math</span>.min(max, <span class="hljs-built_in">Math</span>.max(min, v));
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Then we need to determine our tempo range. 30 to 300 seems wide enough.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">clampTempo</span>(<span class="hljs-params">t</span>) </span>{
+  <span class="hljs-keyword">return</span> clamp(t, <span class="hljs-number">30</span>, <span class="hljs-number">300</span>);
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>And then a utility function to get the tempo value, clamped the pre-determined
+range:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">getTempo</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> clampTempo(<span class="hljs-built_in">parseFloat</span>($(<span class="hljs-string">"input"</span>).value));
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>And then a little shortcut that I like to use, <code>$</code> to get DOM elements, like in
+the old days:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>$ = <span class="hljs-built_in">document</span>.querySelector.bind(<span class="hljs-built_in">document</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <h2 id="the-metronome-core">The metronome core</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>We need a sound that repeats at very precise intervals. No jitter is acceptable,
+since this is the point of reference for a musician or a band. Looping a
+<code>AudioBufferSourceNode</code> in the Web Audio API is guaranteed to be:</p>
+<ul>
+<li><em>Very</em> precise, down to below a single sample of precision</li>
+<li>Not affected by the load of the machine, since everything is running on a
+real-time thread, on all OSes, on all browsers</li>
+<li>Not affected by the main thread load, since the main thread is not used,
+except when changing the tempo</li>
+<li>Portable: this works on any implementation of the Web Audio API that was ever
+released, regardless of the version of the implementation (I think? I haven’t
+tried, but the objects this is using were in the first published draft of the
+spec)</li>
+</ul>
+<p>If we loop a buffer of the right size, we can have a very precise metronome, the
+rest of this document explains how.</p>
+<p>First, as usual, let’s get an <code>AudioContext</code>:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> ac = <span class="hljs-keyword">new</span> AudioContext();</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Then, wrap all the setup in a function, that we’ll call when the elements we use
+for controlling the metronome will be ready.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">setup</span>(<span class="hljs-params"></span>) </span>{</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>First thing we need to do when setting up is to get an <code>AudioBuffer</code>, which is
+something that can hold audio data, in the form of a buffer of floats (or
+multiple buffers of floats for a stereo <code>AudioBuffer</code>, one per channel).</p>
+<p>We need to make it long enough for our tempo range: twice the sample-rate means
+it can hold 2 seconds of audio data (since the sample-rate is the number of
+samples per seconds), which is long enough for a metronome set at 30 beats per
+minute. This is fairly slow, but very useful when practicing an instrument, to
+really get a solid timing:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">var</span> buf = ac.createBuffer(<span class="hljs-number">1</span>, ac.sampleRate * <span class="hljs-number">2</span>, ac.sampleRate);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>Get the internal float buffer on the first channel (we only have one anyways),
+this gets us a regular <code>Float32Array</code>:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">var</span> channel = buf.getChannelData(<span class="hljs-number">0</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>Now, we could use a sample, we it’s easier and more fun to just synthesize a
+little tone.  Let’s get a sine wave with a decaying envelope, with a pitch that
+is not too low (so that it can be heard easily over a backing track), but not
+too high (since it’s likely to be playing for a long time, and high pitched
+sound tend to be tiring over time).</p>
+<p>In an oscillator, the phase is a number in [0; 2*π] that is the position of the
+signal in the periodic waveform:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">var</span> phase = <span class="hljs-number">0</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>The amp is simply a volume multiplier. It starts at full volume, and here we’ll
+make it linearly decrease over the length of the tone:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">var</span> amp = <span class="hljs-number">1</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>We pick a duration of 20ms: <code>ac.sampleRate</code> samples is 1 seconds, so divided by
+50 is 20ms. This is short enough to be precise:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">var</span> duration_frames = ac.sampleRate / <span class="hljs-number">50</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>The frequency is set to be 330Hz, which is an E. It’s often better to have two
+tones, and to not use a sine, so that there are harmonics, allowing the
+metronome sound to cut better in a busy mix, but here, simplicity is more
+important:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">const</span> f = <span class="hljs-number">330</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>Now, for each sample, for the duration of our tone, we compute the sine value,
+increment the phase (and wrap it around if it goes over 2π, but this is probably
+not necessary because the tone is so short anyways). Finally, we decrement our
+amplitude value so that the sound volume decrease over time, and resembles a
+percussive sound, like a percussionist hitting a clave of some sort:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; duration_frames; i++) {
+    channel[i] = <span class="hljs-built_in">Math</span>.sin(phase) * amp;
+    phase += <span class="hljs-number">2</span> * <span class="hljs-built_in">Math</span>.PI * f / ac.sampleRate;
+    <span class="hljs-keyword">if</span> (phase &gt; <span class="hljs-number">2</span> * <span class="hljs-built_in">Math</span>.PI) {
+      phase -= <span class="hljs-number">2</span> * <span class="hljs-built_in">Math</span>.PI;
+    }
+    amp -= <span class="hljs-number">1</span> / duration_frames;
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p>Now, back to Web Audio API code, we create an <code>AudioBufferSoureNode</code>, which is
+the object that lets author play back the content of an <code>AudioBuffer</code>:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  source = ac.createBufferSource();</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>We set the buffer to play via its <code>buffer</code> attribute:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  source.buffer = buf;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>Set it to loop, and set the loop end to exactly the right duration, for our
+tempo: the duration between two beats is the tempo, divided by 60, which gets us
+the frequency of the beats in Hertz. Inverting Hertz gets us seconds, and that’s
+what the <code>loopEnd</code> attribute uses:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  source.loop = <span class="hljs-literal">true</span>;
+  source.loopEnd = <span class="hljs-number">1</span> / (getTempo() / <span class="hljs-number">60</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>Finally, we connect this <code>AudioBufferSourceNode</code> to the <code>AudioContext</code>
+destination, and start the playback of this <code>AudioNode</code>:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  source.connect(ac.destination);
+  source.start(<span class="hljs-number">0</span>);
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>Now, we’de like this metronome to be startable and stoppable. A simple button
+will do the job, and an input type number will allow to change the tempo.</p>
+<p>The tool I’m using do do this doesn’t seem to support mixed HTML and js source
+code, so I’m writing everything in JavaScript, like an animal. I’m not happy
+about this.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> input = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">"input"</span>);
+input.type = <span class="hljs-string">"number"</span>;
+input.min = <span class="hljs-number">30</span>;
+input.max = <span class="hljs-number">300</span>;
+input.step = <span class="hljs-number">0.1</span>;
+input.value = <span class="hljs-number">133</span>;
+
+<span class="hljs-keyword">var</span> button = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">"button"</span>);
+button.innerText = <span class="hljs-string">"start"</span>;
+
+<span class="hljs-built_in">window</span>.onload = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-built_in">document</span>.body.appendChild(input);
+  <span class="hljs-built_in">document</span>.body.appendChild(button);
+
+  <span class="hljs-keyword">for</span> (e <span class="hljs-keyword">of</span> [input, button]) {
+    <span class="hljs-comment">/* CSS-in-js is trendy */</span>
+    e.style = <span class="hljs-string">"font-size: 3em; display: block; margin: 1em auto;"</span>;
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>By default, the Web Audio API is prevented from playing, it’s
+going to be necessary to click the button to start playback. This is the
+behaviour we want, having sound starting when a page is loaded is really really
+bad. We only use one button for start and stop, so it’s necessary to change the
+label:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  button.onclick = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">if</span> (ac.state == <span class="hljs-string">"running"</span>) {
+      ac.suspend();
+      button.innerText = <span class="hljs-string">"start"</span>;
+    } <span class="hljs-keyword">else</span> {
+      ac.resume();
+      button.innerText = <span class="hljs-string">"stop"</span>;
+    }
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>Whenever the input value changes, it’s necessary to change the <code>loopEnd</code>
+attribute so it ticks at the right interval. We also want to update the value
+displayed, to make it clear to the user that the supported tempo range is [30,
+300]:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  input.oninput = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    setTimeout(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+        input.value = getTempo();
+    }, <span class="hljs-number">0</span>);
+    source.loopEnd = <span class="hljs-number">1</span> / (getTempo() / <span class="hljs-number">60</span>);
+  }
+
+  setup();
+}</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
