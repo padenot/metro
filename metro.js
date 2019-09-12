@@ -55,10 +55,12 @@ window.onload = function() {
       button.innerText = "stop";
     }
   }
+  input.onchange = function() {
+      setTimeout(function() {
+          input.value = getTempo();
+      }, 0);
+  }
   input.oninput = function() {
-    setTimeout(function() {
-        input.value = getTempo();
-    }, 0);
     source.loopEnd = 1 / (getTempo() / 60);
   }
   setup();
