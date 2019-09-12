@@ -186,10 +186,12 @@ attribute so it ticks at the right interval. We also want to update the value
 displayed, to make it clear to the user that the supported tempo range is [30,
 300]:
 
+      input.onchange = function() {
+          setTimeout(function() {
+              input.value = getTempo();
+          }, 0);
+      }
       input.oninput = function() {
-        setTimeout(function() {
-            input.value = getTempo();
-        }, 0);
         source.loopEnd = 1 / (getTempo() / 60);
       }
 
